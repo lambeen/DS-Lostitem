@@ -189,7 +189,7 @@ struct AuctionItem_Overview_View: View {
         .background(Color(.systemBackground))
         .navigationBarHidden(true)
         .task {
-            await loadOverview()
+            
         }
     }
 
@@ -199,33 +199,11 @@ struct AuctionItem_Overview_View: View {
         currentPhotoIndex = (currentPhotoIndex + 1) % total
     }
 
-    // MARK: - 서버에서 상세 정보 가져오기
-    private func loadOverview() async {
-        guard let url = URL(string: "\(API.auctionItemOverview)?auction_id=\(auctionId)") else {
-            return
-        }
-
-        await MainActor.run { isLoading = true }
-
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-
-            // 디버깅용: 서버에서 실제로 뭐가 오는지 보고 싶을 때
-            if let raw = String(data: data, encoding: .utf8) {
-                print("🔵 overview raw JSON:\n\(raw)")
-            }
-
-            let decoded = try JSONDecoder().decode(AuctionItemOverviewDTO.self, from: data)
-
-            await MainActor.run {
-                self.overview = decoded
-                self.isLoading = false
-            }
-        } catch {
-            print("❌ loadOverview error:", error)
-            await MainActor.run { self.isLoading = false }
-        }
-    }
+   
+    
+    
+    
+    
 }
 
 #Preview {

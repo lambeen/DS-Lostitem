@@ -113,7 +113,6 @@ struct AuctionList_View: View {
                                 .cornerRadius(16)
                         }
                     }
-
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
@@ -182,7 +181,7 @@ struct AuctionList_View: View {
         .onReceive(timer) { now = $0 }
     }
     
-    //그냥 전체목록 보여주기(정렬 조건 없이
+    // 그냥 전체목록 보여주기
     private var filteredAuctions: [AuctionItemDTO] {
         if selectedStatusCode == -1 {
             return auctions
@@ -208,7 +207,6 @@ struct AuctionList_View: View {
                 let lw = order[lhs.statusCode] ?? 99
                 let rw = order[rhs.statusCode] ?? 99
                 if lw != rw { return lw < rw } // 같은 상태면 최근 경매 먼저
-                
                 return lhs.id > rhs.id
             }
         } else {
@@ -379,7 +377,7 @@ struct AuctionRowView: View {
                         .font(.headline)
                         .multilineTextAlignment(.trailing)
                 }
-                .frame(minWidth: 60) // 살짝 폭 확보 (옵션)
+                .frame(minWidth: 60)
             }
         }
         .padding(.vertical, 6)

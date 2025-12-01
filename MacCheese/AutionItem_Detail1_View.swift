@@ -22,7 +22,13 @@ struct BidRank: Identifiable, Decodable, Equatable {
     }
 }
 
-// MARK: - 경매 상세 DTO
+// MARK: - 입찰 순위만 받는 DTO (auction_bids.php)
+
+struct AuctionBidsResponseDTO: Decodable {
+    let bids: [BidRank]
+}
+
+// MARK: - 경매 상세 DTO (auction_detail.php)
 
 struct AuctionItemDetailDTO: Decodable {
     let id: Int
@@ -47,11 +53,17 @@ struct AuctionItemDetailDTO: Decodable {
     /// 서버에서 볼 때 종료 상태인지 여부 (취소/완료 + 타이머 0 이하)
     var serverEnded: Bool {
         if let status = statusEnum {
-            if status == .cancelled || status == .finished {
+            if status == .cancelled {
+                return true
+            }
+            if status == .finished {
                 return true
             }
         }
-        return timeLeftSeconds <= 0
+        if timeLeftSeconds <= 0 {
+            return true
+        }
+        return false
     }
     
     enum CodingKeys: String, CodingKey {
@@ -77,7 +89,7 @@ struct AutionItem_Detail1_View: View {
     @State private var item: AuctionItemDetailDTO?
     @State private var isLoading: Bool = false
     
-    // 타이머용 남은 시간(초) - 이 값만 줄여나감
+    // 타이머용 남은 시간(초)
     @State private var remainingTime: Int = 0
     
     // 입찰 순위
@@ -93,9 +105,9 @@ struct AutionItem_Detail1_View: View {
         in: .common
     ).autoconnect()
     
-    // 3초마다 입찰 순위 재조회 (실시간 갱신 흉내)
+    // 1초마다 입찰 순위 재조회
     private let rankTimer = Timer.publish(
-        every: 3,
+        every: 1,
         on: .main,
         in: .common
     ).autoconnect()
@@ -106,6 +118,10 @@ struct AutionItem_Detail1_View: View {
         BidRank(rank: 2, studentId: "20234567", amount: 7500),
         BidRank(rank: 3, studentId: "20239876", amount: 7000)
     ]
+    
+    private let accent = Color(red: 0.78, green: 0.10, blue: 0.36)
+    
+    // MARK: - Body
     
     var body: some View {
         VStack(spacing: 0) {
@@ -136,15 +152,17 @@ struct AutionItem_Detail1_View: View {
                                 }
                                 
                                 // 종료 날짜
-                                if let end = item.endDate, !end.isEmpty {
-                                    Text("종료: \(end)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                if let end = item.endDate {
+                                    if !end.isEmpty {
+                                        Text("종료: \(end)")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                                 
                                 // 실시간 타이머 (AuctionList 포맷 맞춰서)
-                                Text(formatTimeLeft(remainingTime,
-                                                    isEnded: isActuallyEnded(item)))
+                                Text(formatTimeLeft(seconds: remainingTime,
+                                                    isEnded: isActuallyEnded(item: item)))
                                     .font(.headline)
                                     .foregroundColor(accent)
                             }
@@ -185,7 +203,7 @@ struct AutionItem_Detail1_View: View {
                                     Spacer()
                                 }
                                 
-                                // 오른쪽 > 버튼 (이미지가 2장 이상일 때만 표시, 위치는 고정)
+                                // 오른쪽 > 버튼 (이미지가 2장 이상일 때만 표시)
                                 HStack {
                                     Spacer()
                                     Button {
@@ -196,14 +214,14 @@ struct AutionItem_Detail1_View: View {
                                             .foregroundColor(accent)
                                             .padding(.trailing, 16)
                                     }
-                                    .opacity(photoCount > 1 ? 1 : 0)
+                                    .opacity(photoCount > 1 ? 1.0 : 0.0)
                                 }
                             }
                             .frame(height: 200)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             
-                            // ▶ 이미지 인디케이터: 이미지 하단에 깔끔하게 배치
+                            // ▶ 이미지 인디케이터
                             if photoCount > 0 {
                                 Text("\(currentPhotoIndex + 1) / \(photoCount)")
                                     .font(.caption)
@@ -217,11 +235,15 @@ struct AutionItem_Detail1_View: View {
                             }
                             
                             // 버튼: 진행 중이면 "입찰신청", 종료/취소이면 "입찰종료"
-                            let isEnded = isActuallyEnded(item)
-                            
-                            if isEnded {
-                                // 입찰종료 버튼
-                                NavigationLink(destination: AuctionEnded_View()) {
+                            if isActuallyEnded(item: item) {
+                                NavigationLink(
+                                    destination: AuctionEnded_View(
+                                        itemName: endedItemName(for: item),
+                                        thumbURL: endedThumbURL(for: item),
+                                        winnerStudentId: topBidRank()?.studentId,
+                                        finalPrice: topBidRank()?.amount
+                                    )
+                                ) {
                                     Text("입찰종료")
                                         .font(.system(size: 16, weight: .semibold))
                                         .frame(width: 150)
@@ -233,14 +255,13 @@ struct AutionItem_Detail1_View: View {
                                 .padding(.top, 8)
                                 .frame(maxWidth: .infinity, alignment: .center)
                             } else {
-                                // 입찰신청 버튼
                                 NavigationLink(destination: BidApply_View()) {
                                     Text("입찰신청")
                                         .font(.system(size: 16, weight: .semibold))
                                         .frame(width: 150)
                                         .padding()
-                                        .background(Color.white)              // 흰 배경
-                                        .foregroundColor(accent)             // 글자색 accent
+                                        .background(Color.white)
+                                        .foregroundColor(accent)
                                         .cornerRadius(10)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 10)
@@ -255,10 +276,6 @@ struct AutionItem_Detail1_View: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("입찰 순위")
                                     .font(.headline)
-                                
-                                let ranksToShow = bidRanks.isEmpty
-                                    ? dummyBidRanks
-                                    : bidRanks
                                 
                                 if ranksToShow.isEmpty {
                                     Text("입찰 내역 없음")
@@ -277,7 +294,6 @@ struct AutionItem_Detail1_View: View {
                                             }
                                         }
                                     }
-                                    // 순위가 바뀔 때 위아래로 자연스럽게 움직이게
                                     .animation(.default, value: ranksToShow)
                                 }
                             }
@@ -302,18 +318,18 @@ struct AutionItem_Detail1_View: View {
             hideBackButton: false
         )
         .onAppear {
-            // 처음 들어올 때: 서버에서 내려준 timeLeftSeconds로 초기화
-            loadAuctionItem(initial: true)
+            // 처음 들어올 때: 상세 정보 + 초기 순위 + 남은 시간 세팅
+            loadAuctionItem()
         }
-        // 남은 시간 감소 (리스트처럼 매초 업데이트)
+        // 남은 시간 감소
         .onReceive(timer) { _ in
             if remainingTime > 0 {
                 remainingTime -= 1
             }
         }
-        // 3초마다 서버에서 상세 정보 다시 가져와서 순위만 갱신 (remainingTime은 초기값 유지)
+        // 1초마다 서버에서 입찰 순위만 다시 가져오기
         .onReceive(rankTimer) { _ in
-            loadAuctionItem(initial: false)
+            loadBids()
         }
     }
     
@@ -321,34 +337,96 @@ struct AutionItem_Detail1_View: View {
     
     private func currentPhotoURL(for item: AuctionItemDetailDTO) -> URL? {
         let photos = item.photos
-        guard !photos.isEmpty else { return nil }
+        if photos.isEmpty {
+            return nil
+        }
         
-        let safeIndex = min(max(currentPhotoIndex, 0), photos.count - 1)
+        var safeIndex = currentPhotoIndex
+        if safeIndex < 0 {
+            safeIndex = 0
+        }
+        if safeIndex >= photos.count {
+            safeIndex = photos.count - 1
+        }
+        
         let urlString = photos[safeIndex]
         return URL(string: urlString)
     }
     
-    
-    
     private func goNextPhoto(photoCount: Int) {
-        guard photoCount > 1 else { return }
-        let next = currentPhotoIndex + 1
-        currentPhotoIndex = (next >= photoCount) ? 0 : next
+        if photoCount <= 1 {
+            return
+        }
+        
+        let nextIndex = currentPhotoIndex + 1
+        
+        if nextIndex >= photoCount {
+            currentPhotoIndex = 0
+        } else {
+            currentPhotoIndex = nextIndex
+        }
     }
     
-
-    private func loadAuctionItem(initial: Bool) {
+    // MARK: - Helper: 종료 화면용 데이터
+    
+    private func endedItemName(for item: AuctionItemDetailDTO) -> String {
+        if item.itemName.isEmpty {
+            return initialTitle
+        }
+        return item.itemName
+    }
+    
+    private func endedThumbURL(for item: AuctionItemDetailDTO) -> String? {
+        if item.photos.isEmpty {
+            return nil
+        }
+        return item.photos[0]
+    }
+    
+    private func topBidRank() -> BidRank? {
+        if bidRanks.isEmpty {
+            return nil
+        }
+        
+        let sorted = bidRanks.sorted { lhs, rhs in
+            lhs.rank < rhs.rank
+        }
+        
+        if sorted.isEmpty {
+            return nil
+        }
+        return sorted[0]
+    }
+    
+    // 입찰 순위에 보여줄 배열 (더미 포함)
+    private var ranksToShow: [BidRank] {
+        if bidRanks.isEmpty {
+            return dummyBidRanks
+        }
+        return bidRanks
+    }
+    
+    // MARK: - 서버 호출
+    
+    /// 처음 진입 시: 상세 전체 1번 호출
+    private func loadAuctionItem() {
         guard let url = URL(string: "\(API.auctionItemDetail)?auction_id=\(auctionId)") else {
             return
         }
         
-        if initial && item == nil {
+        if item == nil {
             isLoading = true
         }
         
         URLSession.shared.dataTask(with: url) { data, response, error in
-            guard error == nil,
-                  let data = data else {
+            if error != nil {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                }
+                return
+            }
+            
+            guard let data = data else {
                 DispatchQueue.main.async {
                     self.isLoading = false
                 }
@@ -360,36 +438,18 @@ struct AutionItem_Detail1_View: View {
                 DispatchQueue.main.async {
                     self.item = decoded
                     
-                    let serverTime = max(decoded.timeLeftSeconds, 0)
-                    
-                    if initial {
-                        // 🔹 첫 진입일 때는 서버 값을 그대로 사용
+                    let serverTime = decoded.timeLeftSeconds
+                    if serverTime > 0 {
                         self.remainingTime = serverTime
                     } else {
-                        // 🔹 이후에는 "서버 변화가 있을 때만" 동기화
-                        //    - 상태가 취소/완료로 바뀐 경우
-                        //    - 타이머 차이가 너무 벌어진 경우 (3초 이상)
-                        let status = decoded.statusEnum
-                        let serverEnded = (status == .cancelled || status == .finished || serverTime <= 0)
-                        
-                        if serverEnded {
-                            // 서버가 끝났다고 하면 바로 0으로 맞춰줌
-                            self.remainingTime = 0
-                        } else {
-                            // 차이가 너무 많이 나면 서버 기준으로 재동기화
-                            let diff = abs(serverTime - self.remainingTime)
-                            if diff > 3 {
-                                self.remainingTime = serverTime
-                            }
-                        }
+                        self.remainingTime = 0
                     }
                     
                     withAnimation {
                         self.bidRanks = decoded.bids
                     }
-                    // 이미지 인덱스 초기화
-                    self.currentPhotoIndex = 0
                     
+                    self.currentPhotoIndex = 0
                     self.isLoading = false
                 }
             } catch {
@@ -399,39 +459,74 @@ struct AutionItem_Detail1_View: View {
             }
         }.resume()
     }
+    
+    /// 입찰 순위만 별도 API로 1초마다 재조회
+    private func loadBids() {
+        guard let url = URL(string: "\(API.auctionBids)?auction_id=\(auctionId)") else {
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if error != nil {
+                return
+            }
+            
+            guard let data = data else {
+                return
+            }
+            
+            if let decoded = try? JSONDecoder().decode(AuctionBidsResponseDTO.self, from: data) {
+                DispatchQueue.main.async {
+                    withAnimation {
+                        self.bidRanks = decoded.bids
+                    }
+                }
+            }
+        }.resume()
+    }
 
     // MARK: - 남은 시간 포맷 (AuctionList와 동일한 스타일)
 
-    private func formatTime(_ s: Int) -> String {
-        let days = s / 86400
-        let hours = (s % 86400) / 3600
-        let minutes = (s % 3600) / 60
-        let secs = s % 60
+    private func formatTime(seconds: Int) -> String {
+        let days = seconds / 86400
+        let hours = (seconds % 86400) / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
         
         if days > 0 {
             return String(format: "D-%d %02d:%02d:%02d", days, hours, minutes, secs)
+        } else {
+            let totalHours = hours + days * 24
+            return String(format: "%02d:%02d:%02d", totalHours, minutes, secs)
         }
-        
-        return String(format: "%02d:%02d:%02d", hours + days * 24, minutes, secs)
     }
     
-    private func formatTimeLeft(_ sec: Int, isEnded: Bool) -> String {
-        // 종료/취소 상태거나 0초 이하면 고정 문구
-        guard !isEnded, sec > 0 else {
+    private func formatTimeLeft(seconds: Int, isEnded: Bool) -> String {
+        if isEnded {
+            return "경매 종료까지 00:00:00:00"
+        }
+        if seconds <= 0 {
             return "경매 종료까지 00:00:00:00"
         }
         
-        let timePart = formatTime(sec)
+        let timePart = formatTime(seconds: seconds)
         return "경매 종료까지 \(timePart)"
     }
     
     /// 버튼/타이머에서 사용할 실제 종료 여부 (상태 + 남은 시간 둘 다 반영)
-    private func isActuallyEnded(_ item: AuctionItemDetailDTO) -> Bool {
-        if let status = item.statusEnum,
-           status == .cancelled || status == .finished {
+    private func isActuallyEnded(item: AuctionItemDetailDTO) -> Bool {
+        if let status = item.statusEnum {
+            if status == .cancelled {
+                return true
+            }
+            if status == .finished {
+                return true
+            }
+        }
+        if remainingTime <= 0 {
             return true
         }
-        return remainingTime <= 0
+        return false
     }
 }
 
