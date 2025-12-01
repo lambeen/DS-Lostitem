@@ -9,11 +9,12 @@ import SwiftUI
 
 @main
 struct MacCheeseApp: App {
+    @StateObject private var globalTimer = GlobalTimer.shared
+    
     var body: some Scene {
         WindowGroup {
-           
-                Login_View()
-            
+            Login_View()
+                .environmentObject(globalTimer)
         }
     }
 }

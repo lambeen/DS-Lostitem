@@ -9,6 +9,8 @@
 import SwiftUI
 
 struct Login_View: View {
+    @EnvironmentObject var globalTimer: GlobalTimer
+    
     @State private var studentId: String = ""       // 학번
     @State private var password: String = ""        // 비밀번호
     @State private var message: String? = nil       // 안내/에러 메시지
@@ -79,7 +81,8 @@ struct Login_View: View {
 
                     // 로그인 이동용
                     NavigationLink(
-                        destination: TapBar_View(userPkey: 1),
+                        destination: TapBar_View(userPkey: 1)
+                            .environmentObject(globalTimer),
                         isActive: $succeedLogin
                     ) {
                         EmptyView()

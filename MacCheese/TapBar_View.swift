@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct TapBar_View: View {
+    @EnvironmentObject var globalTimer: GlobalTimer
+    
     let userPkey: Int
     
     var body: some View {
@@ -21,6 +23,7 @@ struct TapBar_View: View {
             // 2) 경매
             NavigationStack {
                 AuctionList_View()
+                    .environmentObject(globalTimer)
             }
             .tabItem {
                 VStack(spacing: 2) {

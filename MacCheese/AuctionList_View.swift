@@ -74,20 +74,15 @@ struct AuctionListResponseDTO: Decodable {
 }
 
 struct AuctionList_View: View {
+    @EnvironmentObject var globalTimer: GlobalTimer
+    
     @State private var statusList: [AuctionStatusDTO] = []
     @State private var selectedStatusCode: Int = -1
     
     @State private var auctions: [AuctionItemDTO] = []
-    @State private var now = Date()
     
     @State private var currentPage = 1
     private let pageSize = 4
-    
-    private let timer = Timer.publish(
-        every: 1,
-        on: .main,
-        in: .common
-    ).autoconnect()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -135,15 +130,16 @@ struct AuctionList_View: View {
                 NavigationLink {
                     AutionItem_Detail1_View(
                         auctionId: auction.id,
-                        initialTitle: auction.title   // 리스트에서 쓰던 제목
+                        initialTitle: auction.title
                     )
+                    .environmentObject(globalTimer)
                 } label: {
-                    AuctionRowView(auction: auction, now: now)
+                    AuctionRowView(auction: auction, now: globalTimer.currentTime)
                 }
                 .listRowSeparator(.visible)
             }
             .listStyle(.plain)
-            .id(currentPage)
+            .id("\(currentPage)-\(Int(globalTimer.currentTime.timeIntervalSince1970))")
             
             // 페이지 표시 (1 / N 형식)
             HStack(spacing: 16) {
@@ -178,7 +174,6 @@ struct AuctionList_View: View {
             hideBackButton: true
         )
         .onAppear(perform: loadAuctions)
-        .onReceive(timer) { now = $0 }
     }
     
     // 그냥 전체목록 보여주기

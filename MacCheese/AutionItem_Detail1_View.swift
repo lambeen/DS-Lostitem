@@ -82,6 +82,7 @@ struct AuctionItemDetailDTO: Decodable {
 // MARK: - 경매 상세 화면
 
 struct AutionItem_Detail1_View: View {
+    @EnvironmentObject var globalTimer: GlobalTimer
     
     let auctionId: Int           // 어떤 경매인지 (리스트에서 전달)
     let initialTitle: String     // 리스트에서 보이던 제목
@@ -89,28 +90,37 @@ struct AutionItem_Detail1_View: View {
     @State private var item: AuctionItemDetailDTO?
     @State private var isLoading: Bool = false
     
-    // 타이머용 남은 시간(초)
-    @State private var remainingTime: Int = 0
-    
     // 입찰 순위
     @State private var bidRanks: [BidRank] = []
     
     // 이미지 인덱스 (현재 몇 번째 사진인지)
     @State private var currentPhotoIndex: Int = 0
     
-    // 1초마다 타이머 감소
-    private let timer = Timer.publish(
-        every: 1,
-        on: .main,
-        in: .common
-    ).autoconnect()
-    
-    // 1초마다 입찰 순위 재조회
+    // 입찰 순위 재조회용 타이머
     private let rankTimer = Timer.publish(
         every: 1,
         on: .main,
         in: .common
     ).autoconnect()
+    
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        f.locale = Locale(identifier: "ko_KR")
+        f.timeZone = TimeZone(identifier: "Asia/Seoul")
+        return f
+    }()
+    
+    private func calculateRemainingTime(for item: AuctionItemDetailDTO) -> Int {
+        guard let endDateString = item.endDate,
+              !endDateString.isEmpty,
+              let endDate = AutionItem_Detail1_View.dateFormatter.date(from: endDateString) else {
+            return 0
+        }
+        
+        let diff = Int(endDate.timeIntervalSince(globalTimer.currentTime))
+        return max(0, diff)
+    }
     
     // 더미 입찰 데이터 (서버에 아무 것도 없을 때 화면용)
     private let dummyBidRanks: [BidRank] = [
@@ -160,11 +170,11 @@ struct AutionItem_Detail1_View: View {
                                     }
                                 }
                                 
-                                // 실시간 타이머 (AuctionList 포맷 맞춰서)
-                                Text(formatTimeLeft(seconds: remainingTime,
+                                Text(formatTimeLeft(seconds: calculateRemainingTime(for: item),
                                                     isEnded: isActuallyEnded(item: item)))
                                     .font(.headline)
                                     .foregroundColor(accent)
+                                    .id(globalTimer.currentTime)
                             }
                             .padding(.top, 16)
                             .padding(.horizontal, 16)
@@ -318,16 +328,8 @@ struct AutionItem_Detail1_View: View {
             hideBackButton: false
         )
         .onAppear {
-            // 처음 들어올 때: 상세 정보 + 초기 순위 + 남은 시간 세팅
             loadAuctionItem()
         }
-        // 남은 시간 감소
-        .onReceive(timer) { _ in
-            if remainingTime > 0 {
-                remainingTime -= 1
-            }
-        }
-        // 1초마다 서버에서 입찰 순위만 다시 가져오기
         .onReceive(rankTimer) { _ in
             loadBids()
         }
@@ -438,13 +440,6 @@ struct AutionItem_Detail1_View: View {
                 DispatchQueue.main.async {
                     self.item = decoded
                     
-                    let serverTime = decoded.timeLeftSeconds
-                    if serverTime > 0 {
-                        self.remainingTime = serverTime
-                    } else {
-                        self.remainingTime = 0
-                    }
-                    
                     withAnimation {
                         self.bidRanks = decoded.bids
                     }
@@ -523,7 +518,7 @@ struct AutionItem_Detail1_View: View {
                 return true
             }
         }
-        if remainingTime <= 0 {
+        if calculateRemainingTime(for: item) <= 0 {
             return true
         }
         return false
