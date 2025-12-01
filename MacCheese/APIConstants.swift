@@ -19,12 +19,9 @@ enum API {
     static let itemCategoryList = "\(baseURL)/ItemCategory_List_V.php"
     
     static let auctionList         = "\(baseURL)/auction_list.php"
-    static let auctionItem         = "\(baseURL)/auction_item.php"
-    static let auctionItemOverview = "\(baseURL)/auction_item_overview.php"
     static let auctionItemDetail  = "\(baseURL)/auction_detail.php"
     
     static let auctionBids         = "\(baseURL)/auction_bids.php"
-    static let auctionEnded        = "\(baseURL)/auction_ended.php"
     static let auctionComment      = "\(baseURL)/AuctionComment_V.php"
     static let bidApply            = "\(baseURL)/bid_apply.php"
     
