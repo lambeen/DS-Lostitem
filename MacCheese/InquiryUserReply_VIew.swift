@@ -22,6 +22,8 @@ struct InquiryUserReply_VIew: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            
+            
 
             // 상단 헤더
             HStack(spacing: 12) {
@@ -34,7 +36,7 @@ struct InquiryUserReply_VIew: View {
                         .foregroundColor(.white)
                 }
 
-                Text("문의하기")
+                Text("")
                     .font(.headline)
                     .foregroundColor(.white)
 
@@ -61,18 +63,7 @@ struct InquiryUserReply_VIew: View {
                         .cornerRadius(4)
 
                     // 사용자 답변
-                    Text("답변")
-                        .font(.subheadline)
-                        .foregroundColor(.primary)
-
-                    TextEditor(text: $userReply)
-                        .font(.body)
-                        .foregroundColor(.white)
-                        .frame(minHeight: 160, alignment: .topLeading)
-                        .padding(8)
-                        .background(accent)
-                        .cornerRadius(4)
-                        .scrollContentBackground(.hidden)
+                    
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -90,8 +81,9 @@ struct InquiryUserReply_VIew: View {
                     // 여기서 서버 통신이 필요하면 추가하고
                     // 지금은 단순히 유실물 목록으로 되돌아가기만
                     dismiss()
+                    
                 } label: {
-                    Text("답변완료")
+                    Text("문의확인")
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -101,6 +93,9 @@ struct InquiryUserReply_VIew: View {
                 }
                 .padding(.horizontal, 60)
                 .padding(.top, 16)
+                
+                
+                
 
                 // 이메일 (고정 텍스트 - 필요 없으면 지워도 됨)
                 Text("befanyelse@gmail.com")

@@ -26,7 +26,15 @@ struct Inquiry_View: View {
                     .font(.headline)
                     .foregroundColor(.white)
                 Spacer()
-            }
+                
+            }.duksungHeaderNav(
+                
+                title: "덕성여대 문의 통합포털", // 붉은 타이틀 바 텍스트
+
+                showSearch: false,                 // 오른쪽 검색 버튼 표시
+
+                hideBackButton: false  )          // 루트 화면이니까 뒤로가기 숨김
+            
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(accent)
@@ -61,7 +69,7 @@ struct Inquiry_View: View {
 
             Spacer()
         }
-        .navigationBarHidden(true)
+
     }
 }
 
