@@ -33,6 +33,7 @@ struct AuctionBidsResponseDTO: Decodable {
 struct AuctionItemDetailDTO: Decodable {
     let id: Int
     let itemName: String
+    let description: String?
     
     let statusCode: Int
     let statusText: String
@@ -67,7 +68,7 @@ struct AuctionItemDetailDTO: Decodable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, itemName
+        case id, itemName, description
         case statusCode     = "status_code"
         case statusText     = "status_text"
         case startDate
@@ -247,12 +248,8 @@ struct AutionItem_Detail1_View: View {
                             // 버튼: 진행 중이면 "입찰신청", 종료/취소이면 "입찰종료"
                             if isActuallyEnded(item: item) {
                                 NavigationLink(
-                                    destination: AuctionEnded_View(
-                                        itemName: endedItemName(for: item),
-                                        thumbURL: endedThumbURL(for: item),
-                                        winnerStudentId: topBidRank()?.studentId,
-                                        finalPrice: topBidRank()?.amount
-                                    )
+                                    destination: AuctionEnded_View(auctionId: auctionId)
+                                        .environmentObject(globalTimer)
                                 ) {
                                     Text("입찰종료")
                                         .font(.system(size: 16, weight: .semibold))
