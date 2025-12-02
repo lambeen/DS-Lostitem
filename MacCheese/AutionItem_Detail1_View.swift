@@ -356,7 +356,7 @@ struct AutionItem_Detail1_View: View {
         }
         .background(Color(.systemBackground))
         .duksungHeaderNav(
-            title: "경매 상세",
+            title: initialTitle,
             showSearch: false,
             hideBackButton: false
         )

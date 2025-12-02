@@ -19,24 +19,6 @@ struct BidApply_View: View {
     var body: some View {
         VStack(spacing: 0) {
 
-            // 상단 헤더
-            HStack(spacing: 12) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                }
-
-                Text("경매 종료까지 01:01:53:20")
-                    .font(.headline)
-                    .foregroundColor(.white)
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(accent)
-
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
 
@@ -154,7 +136,11 @@ struct BidApply_View: View {
             .padding(.vertical, 12)
         }
         .background(Color(.systemBackground))
-        .navigationBarHidden(true)
+        .duksungHeaderNav(
+            title: "입찰뷰 빨리 만들고 끝내자 수빈아 ㅆ바힘들다",
+            showSearch: false,
+            hideBackButton: false
+        )
     }
 }
 

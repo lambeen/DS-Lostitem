@@ -36,7 +36,7 @@ struct AuctionItem_Overview_View: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            headerView
+            
             
             if isLoading && overview == nil {
                 Spacer()
@@ -58,7 +58,11 @@ struct AuctionItem_Overview_View: View {
             }
         }
         .background(Color(.systemBackground))
-        .navigationBarHidden(true)
+        .duksungHeaderNav(
+            title: initialTitle, 
+            showSearch: false,
+            hideBackButton: false
+        )
         .task {
             loadOverview()
         }
@@ -67,24 +71,7 @@ struct AuctionItem_Overview_View: View {
         }
     }
     
-    private var headerView: some View {
-        HStack(spacing: 12) {
-            Button { dismiss() } label: {
-                Image(systemName: "chevron.left")
-                    .font(.headline)
-                    .foregroundColor(.white)
-            }
-            
-            Text("물품 세부사항")
-                .font(.headline)
-                .foregroundColor(.white)
-            
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(accent)
-    }
+    
     
     private func imageSliderView(photos: [String]) -> some View {
         VStack(spacing: 0) {
