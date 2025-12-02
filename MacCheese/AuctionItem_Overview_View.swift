@@ -5,19 +5,16 @@
 
 import SwiftUI
 
-// MARK: - 서버 JSON 모델 (DTO)
-// PHP에서 내려주는 키랑 이름 똑같이 맞춤
 struct AuctionItemOverviewDTO: Decodable {
     let auctionId: Int
     let itemName: String
     let statusText: String
-    let endDate: String?        // null 가능
+    let endDate: String?
     let minPrice: Int
-    let description: String?    // ✅ null 대비해서 옵셔널로 변경
+    let description: String?
     let photos: [String]
 }
 
-// 배열 안전 인덱싱 (사진 인덱스 오류 방지용)
 extension Array {
     subscript(safe index: Int) -> Element? {
         guard indices.contains(index) else { return nil }
@@ -26,157 +23,31 @@ extension Array {
 }
 
 struct AuctionItem_Overview_View: View {
-
     @Environment(\.dismiss) private var dismiss
-
-    // 어떤 경매인지 외부에서 받는 값
+    
     let auctionId: Int
-
-    // 포인트 색
+    let initialTitle: String
     private let accent = Color(red: 0.78, green: 0.10, blue: 0.36)
-
+    
     @State private var overview: AuctionItemOverviewDTO?
     @State private var isLoading = false
     @State private var currentPhotoIndex = 0
-
+    @State private var autoSlideTimer: Timer?
+    
     var body: some View {
         VStack(spacing: 0) {
-
-            // 상단 헤더
-            HStack(spacing: 12) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                }
-
-                Text("물품 세부사항")
-                    .font(.headline)
-                    .foregroundColor(.white)
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(accent)
-
-            // 본문
+            headerView
+            
             if isLoading && overview == nil {
                 Spacer()
                 ProgressView("불러오는 중...")
                 Spacer()
             } else if let o = overview {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-
-                        // 물품명 + 상태 / 날짜
-                        HStack(alignment: .top) {
-                            Text(o.itemName)
-                                .font(.headline)
-
-                            Spacer()
-
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("상태: \(o.statusText)")
-                                if let end = o.endDate {
-                                    Text(String(end.prefix(10)) + " 까지")   // yyyy-MM-dd
-                                }
-                            }
-                            .font(.caption)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-
-                        // 이미지 + > 버튼 + 인덱스
-                        VStack(spacing: 8) {
-                            HStack(spacing: 8) {
-                                ZStack {
-                                    Rectangle()
-                                        .fill(Color(.systemGray5))
-
-                                    if !o.photos.isEmpty,
-                                       let urlStr = o.photos[safe: currentPhotoIndex],
-                                       let url = URL(string: urlStr) {
-                                        AsyncImage(url: url) { image in
-                                            image
-                                                .resizable()
-                                                .scaledToFit()
-                                        } placeholder: {
-                                            ProgressView()
-                                        }
-                                    } else {
-                                        Text("이미지 없음")
-                                            .foregroundColor(.secondary)
-                                            .font(.caption)
-                                    }
-                                }
-                                .frame(height: 220)
-                                .cornerRadius(8)
-
-                                Button {
-                                    showNextPhoto(total: o.photos.count)
-                                } label: {
-                                    Image(systemName: "chevron.right")
-                                        .font(.title3)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-
-                            Text("\(min(currentPhotoIndex + 1, max(o.photos.count, 1)))/\(max(o.photos.count, 1))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        // 최소 금액
-                        Text("최소 금액: \(o.minPrice)원")
-                            .font(.subheadline)
-                            .padding(.horizontal, 16)
-
-                        // 소개글
-                        Text(o.description ?? "이 물품에 대한 상세 설명이 없습니다.")   // ✅ 옵셔널 처리
-                            .font(.footnote)
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 16)
-
-                        // 소유자 확인 요청 버튼
-                        Button {
-                            // TODO: 서버 연동 필요하면 추가
-                            print("소유자 확인 요청")
-                        } label: {
-                            Text("소유자 확인 요청")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(accent)
-                                .cornerRadius(6)
-                        }
-                        .padding(.horizontal, 40)
-                        .padding(.top, 16)
-
-                        // 구분선
-                        Rectangle()
-                            .fill(accent)
-                            .frame(height: 2)
-                            .padding(.top, 24)
-
-                        // 댓글 확인하기 버튼 (나중에 진짜 뷰로 교체 가능)
-                        NavigationLink {
-                            Text("댓글 화면 (임시)")
-                        } label: {
-                            Text("댓글 확인하기")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(accent)
-                                .cornerRadius(6)
-                        }
-                        .padding(.horizontal, 40)
-                        .padding(.vertical, 16)
-
-                        Spacer(minLength: 32)
+                    VStack(spacing: 0) {
+                        imageSliderView(photos: o.photos)
+                        productInfoView(overview: o)
+                        actionButtonsView()
                     }
                 }
             } else {
@@ -189,25 +60,245 @@ struct AuctionItem_Overview_View: View {
         .background(Color(.systemBackground))
         .navigationBarHidden(true)
         .task {
-            
+            loadOverview()
+        }
+        .onDisappear {
+            stopAutoSlide()
         }
     }
-
-    // MARK: - 다음 사진
-    private func showNextPhoto(total: Int) {
-        guard total > 0 else { return }
-        currentPhotoIndex = (currentPhotoIndex + 1) % total
+    
+    private var headerView: some View {
+        HStack(spacing: 12) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.headline)
+                    .foregroundColor(.white)
+            }
+            
+            Text("물품 세부사항")
+                .font(.headline)
+                .foregroundColor(.white)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(accent)
     }
-
-   
     
+    private func imageSliderView(photos: [String]) -> some View {
+        VStack(spacing: 0) {
+            if photos.isEmpty {
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(height: 400)
+                    .overlay(
+                        Text("이미지 없음")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    )
+            } else {
+                TabView(selection: $currentPhotoIndex) {
+                    ForEach(0..<photos.count, id: \.self) { index in
+                        if let urlStr = photos[safe: index],
+                           let url = URL(string: urlStr) {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                case .failure:
+                                    Rectangle()
+                                        .fill(Color(.systemGray5))
+                                        .overlay(
+                                            Image(systemName: "photo")
+                                                .foregroundColor(.gray)
+                                        )
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                            .frame(height: 400)
+                            .clipped()
+                            .tag(index)
+                        }
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(height: 400)
+                .onAppear {
+                    startAutoSlide(total: photos.count)
+                }
+                .onChange(of: currentPhotoIndex) { _ in
+                    stopAutoSlide()
+                    startAutoSlide(total: photos.count)
+                }
+                
+                HStack(spacing: 6) {
+                    ForEach(0..<photos.count, id: \.self) { index in
+                        Circle()
+                            .fill(index == currentPhotoIndex ? accent : Color(.systemGray4))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .padding(.top, 16)
+                .padding(.bottom, 20)
+            }
+        }
+    }
     
+    private func productInfoView(overview: AuctionItemOverviewDTO) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(alignment: .top) {
+                Text(initialTitle)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .multilineTextAlignment(.leading)
+                
+                Spacer()
+                
+                Text("상태: \(overview.statusText)")
+                    .font(.subheadline)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            
+            if let desc = overview.description, !desc.isEmpty {
+                Text(desc)
+                    .font(.system(size: 15))
+                    .foregroundColor(.primary)
+                    .lineSpacing(6)
+                    .padding(.horizontal, 20)
+            }
+            
+            VStack(alignment: .leading, spacing: 10) {
+                if let end = overview.endDate {
+                    Text("종료일: \(String(end.prefix(10)))")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                
+                Text("최소 금액: \(formatPrice(overview.minPrice))원")
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .padding(.horizontal, 20)
+            
+            Spacer(minLength: 24)
+        }
+    }
     
+    private func formatPrice(_ price: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: price)) ?? "\(price)"
+    }
     
+    private func actionButtonsView() -> some View {
+        VStack(spacing: 16) {
+            Button {
+                print("소유자 확인 요청")
+            } label: {
+                Text("소유자 확인 요청")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(accent)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 20)
+            
+            Rectangle()
+                .fill(accent)
+                .frame(height: 2)
+                .padding(.horizontal, 20)
+            
+            NavigationLink {
+                Text("댓글 화면 (임시)")
+            } label: {
+                Text("댓글 확인하기")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(accent)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
+        }
+        .padding(.top, 8)
+    }
+    
+    private func startAutoSlide(total: Int) {
+        guard total > 1 else { return }
+        stopAutoSlide()
+        
+        autoSlideTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: 0.5)) {
+                currentPhotoIndex = (currentPhotoIndex + 1) % total
+            }
+        }
+    }
+    
+    private func stopAutoSlide() {
+        autoSlideTimer?.invalidate()
+        autoSlideTimer = nil
+    }
+    
+    private func loadOverview() {
+        guard let url = URL(string: "\(API.auctionItemDetail)?auction_id=\(auctionId)") else {
+            return
+        }
+        
+        if overview == nil {
+            isLoading = true
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if error != nil {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                }
+                return
+            }
+            
+            do {
+                let decoded = try JSONDecoder().decode(AuctionItemDetailDTO.self, from: data)
+                DispatchQueue.main.async {
+                    let overviewData = AuctionItemOverviewDTO(
+                        auctionId: decoded.id,
+                        itemName: decoded.itemName,
+                        statusText: decoded.statusText,
+                        endDate: decoded.endDate,
+                        minPrice: decoded.minPrice,
+                        description: nil,
+                        photos: decoded.photos
+                    )
+                    self.overview = overviewData
+                    self.isLoading = false
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                }
+            }
+        }.resume()
+    }
 }
 
 #Preview {
     NavigationStack {
-        AuctionItem_Overview_View(auctionId: 1)
+        AuctionItem_Overview_View(auctionId: 1, initialTitle: "예시 물품명")
     }
 }
