@@ -139,7 +139,7 @@ struct AuctionList_View: View {
                 .listRowSeparator(.visible)
             }
             .listStyle(.plain)
-            .id("\(currentPage)-\(Int(globalTimer.currentTime.timeIntervalSince1970))")
+            .id(currentPage)
             
             // 페이지 표시 (1 / N 형식)
             HStack(spacing: 16) {
