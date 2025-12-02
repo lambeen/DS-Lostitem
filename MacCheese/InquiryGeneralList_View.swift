@@ -1,24 +1,45 @@
-//
-//  InquiryGeneralList_View.swift
-//  MacCheese
-//
-//  Created by mac10 on 10/27/25.
-//
-
 import SwiftUI
 
 struct InquiryGeneralList_View: View {
+    
+    @StateObject var store = InquiryStore()  // store 생성
+    
     var body: some View {
-        VStack {
-            NavigationLink(destination: InquiryGeneralContent_View()) {
-                Text("일반 문의 내용")
-            }
-            .duksungHeaderNav(
-                title: "덕성여대 문의 통합포털", // 붉은 타이틀 바 텍스트
-                showSearch: false,                 // 오른쪽 검색 버튼 표시
-                hideBackButton: false  )          // 루트 화면이니까 뒤로가기 숨김
-            NavigationLink(destination: NewInquiry_View()) {
-                Text("문의하기")
+        NavigationStack {
+            VStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    Text("내 일반 문의")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 26)
+                        .background(Color(red: 137/255, green: 20/255, blue: 43/255))
+                    
+                    List {
+                        ForEach(store.inquiries, id: \.self) { title in
+                            NavigationLink(destination: InquiryGeneralContent_View()) {
+                                HStack {
+                                    Text(title)
+                                        .foregroundColor(.black)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding(.vertical, 6)
+                            }
+                        }
+                    }
+                    .scrollContentBackground(.hidden)
+                }
+                
+                NavigationLink(destination: NewInquiry_View(store: store)) {
+                    Text("문의하기")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(Color(red: 137/255, green: 20/255, blue: 43/255))
+                }
             }
         }
     }

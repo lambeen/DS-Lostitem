@@ -79,8 +79,6 @@ struct MyComments_View: View {
                                             .foregroundColor(.gray)
                                     }
                                     Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .foregroundColor(.gray)
                                 }
                                 .padding(.vertical, 4)
                             }

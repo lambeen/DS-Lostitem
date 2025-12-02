@@ -13,9 +13,7 @@ struct InquiryAuctionList_View: View {
             NavigationLink(destination: InquiryAuctionContent_View()) {
                 Text("경매 소유자 문의 내용")
             }
-            NavigationLink(destination: NewInquiry_View()) {
-                Text("문의하기")
-            }
+            
         }
     }
 }

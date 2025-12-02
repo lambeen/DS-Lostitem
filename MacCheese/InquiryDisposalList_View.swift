@@ -13,9 +13,7 @@ struct InquiryDisposalList_View: View {
             NavigationLink(destination: InquiryDisposalContent_View()) {
                 Text("폐기 소유자 문의 내용")
             }
-            NavigationLink(destination: NewInquiry_View()) {
-                Text("문의하기")
-            }
+            
         }
     }
 }
