@@ -304,32 +304,47 @@ struct AutionItem_Detail1_View: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("입찰 순위")
                                     .font(.headline)
-                                
+
                                 if ranksToShow.isEmpty {
                                     Text("입찰 내역 없음")
                                         .foregroundColor(.secondary)
+                                        .font(.subheadline)
                                 } else {
                                     VStack(alignment: .leading, spacing: 8) {
                                         ForEach(ranksToShow) { bid in
                                             HStack(spacing: 12) {
                                                 Text("\(bid.rank)위")
-                                                    .frame(width: 30, alignment: .leading)
-                                                
-                                                Text("\(bid.studentId): \(bid.amount)원")
-                                                    .font(.subheadline)
-                                                
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .frame(width: 40, alignment: .leading)
+
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text(bid.studentId)
+                                                        .font(.subheadline)
+                                                    Text("\(bid.amount)원")
+                                                        .font(.subheadline)
+                                                        .foregroundColor(accent)
+                                                }
+
                                                 Spacer()
                                             }
+                                            .padding(.vertical, 4)
                                         }
                                     }
                                     .animation(.default, value: ranksToShow)
                                 }
                             }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.white)                    // 배경 흰색
+                                    .shadow(radius: 4)                    // 테두리 없이 그림자만
+                            )
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
-                            
+
                             Spacer(minLength: 24)
-                            
+
                         } else {
                             Text("표시할 경매가 없습니다.")
                                 .padding(.top, 40)
@@ -549,5 +564,6 @@ struct AutionItem_Detail1_View: View {
             auctionId: 1,
             initialTitle: "예시 경매 물품 제목"
         )
+        
     }
 }
