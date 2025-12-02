@@ -174,7 +174,8 @@ struct AuctionItem_Overview_View: View {
         if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
             return URL(string: urlString)
         } else {
-            let fullURL = "\(API.baseURL)/\(urlString.hasPrefix("/") ? String(urlString.dropFirst()) : urlString)"
+            let cleanPath = urlString.hasPrefix("/") ? String(urlString.dropFirst()) : urlString
+            let fullURL = "\(API.baseURL)/\(cleanPath)"
             return URL(string: fullURL)
         }
     }
@@ -245,19 +246,41 @@ struct AuctionItem_Overview_View: View {
                 .frame(height: 2)
                 .padding(.horizontal, 20)
             
-            NavigationLink {
-                Text("댓글 화면 (임시)")
-            } label: {
-                Text("댓글 확인하기")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(accent)
-                    .cornerRadius(12)
+            if let o = overview {
+                NavigationLink {
+                    AuctionCommentDetail_View(
+                        itemName: o.itemName.isEmpty ? initialTitle : o.itemName,
+                        statusText: o.statusText,
+                        endDate: o.endDate ?? "",
+                        itemPkey: o.auctionId,
+                        loginUserPkey: 1
+                    )
+                } label: {
+                    Text("댓글 확인하기")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(accent)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
+            } else {
+                Button {
+                } label: {
+                    Text("댓글 확인하기")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(accent.opacity(0.5))
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
+                .disabled(true)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
         }
         .padding(.top, 8)
     }
