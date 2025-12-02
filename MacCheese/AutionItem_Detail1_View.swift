@@ -22,13 +22,12 @@ struct BidRank: Identifiable, Decodable, Equatable {
     }
 }
 
-// MARK: - 입찰 순위만 받는 DTO (auction_bids.php)
 
 struct AuctionBidsResponseDTO: Decodable {
     let bids: [BidRank]
 }
 
-// MARK: - 경매 상세 DTO (auction_detail.php)
+
 
 struct AuctionItemDetailDTO: Decodable {
     let id: Int
@@ -46,7 +45,7 @@ struct AuctionItemDetailDTO: Decodable {
     let bids: [BidRank]
     let photos: [String]
     
-    // 숫자 상태 → 공용 enum 매핑
+    
     var statusEnum: AuctionStatus? {
         AuctionStatus(rawValue: statusCode)
     }
@@ -80,7 +79,6 @@ struct AuctionItemDetailDTO: Decodable {
     }
 }
 
-// MARK: - 경매 상세 화면
 
 struct AutionItem_Detail1_View: View {
     @EnvironmentObject var globalTimer: GlobalTimer
@@ -123,7 +121,7 @@ struct AutionItem_Detail1_View: View {
         return max(0, diff)
     }
     
-    // 더미 입찰 데이터 (서버에 아무 것도 없을 때 화면용)
+    // 더미 입찰 데이터
     private let dummyBidRanks: [BidRank] = [
         BidRank(rank: 1, studentId: "20231234", amount: 8000),
         BidRank(rank: 2, studentId: "20234567", amount: 7500),
@@ -132,7 +130,7 @@ struct AutionItem_Detail1_View: View {
     
     private let accent = Color(red: 0.78, green: 0.10, blue: 0.36)
     
-    // MARK: - Body
+   
     
     var body: some View {
         VStack(spacing: 0) {
@@ -171,11 +169,15 @@ struct AutionItem_Detail1_View: View {
                                     }
                                 }
                                 
-                                Text(formatTimeLeft(seconds: calculateRemainingTime(for: item),
-                                                    isEnded: isActuallyEnded(item: item)))
-                                    .font(.headline)
-                                    .foregroundColor(accent)
-                                    .id(globalTimer.currentTime)
+                                Text(
+                                    formatTimeLeft(
+                                        seconds: calculateRemainingTime(for: item),
+                                        isEnded: isActuallyEnded(item: item)
+                                    )
+                                )
+                                .font(.headline)
+                                .foregroundColor(accent)
+                                .id(globalTimer.currentTime)
                             }
                             .padding(.top, 16)
                             .padding(.horizontal, 16)
@@ -301,47 +303,53 @@ struct AutionItem_Detail1_View: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("입찰 순위")
                                     .font(.headline)
-
-                                if ranksToShow.isEmpty {
+                                
+                                if sortedRanksToShow.isEmpty {
                                     Text("입찰 내역 없음")
                                         .foregroundColor(.secondary)
                                         .font(.subheadline)
                                 } else {
                                     VStack(alignment: .leading, spacing: 8) {
-                                        ForEach(ranksToShow) { bid in
+                                        ForEach(sortedRanksToShow) { bid in
                                             HStack(spacing: 12) {
+                                                // 랭크
                                                 Text("\(bid.rank)위")
                                                     .font(.subheadline.weight(.semibold))
                                                     .frame(width: 40, alignment: .leading)
-
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    Text(bid.studentId)
-                                                        .font(.subheadline)
-                                                    Text("\(bid.amount)원")
-                                                        .font(.subheadline)
-                                                        .foregroundColor(accent)
-                                                }
-
+                                                
+                                                // 학번
+                                                Text(bid.studentId)
+                                                    .font(.subheadline)
+                                                
                                                 Spacer()
+                                                
+                                                // 입찰가
+                                                Text("\(bid.amount)원")
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .foregroundColor(accent)
                                             }
-                                            .padding(.vertical, 4)
+                                            .padding(.vertical, 10)
+                                            .padding(.horizontal, 14)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .fill(Color.white)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .stroke(.white, lineWidth: 0.1)
+                                            )
+                                            
                                         }
                                     }
-                                    .animation(.default, value: ranksToShow)
+                                    .animation(.easeInOut, value: sortedRanksToShow)
+                                    .shadow(radius: 1, y: 1)
                                 }
                             }
-                            .padding(16)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.white)                    // 배경 흰색
-                                    .shadow(radius: 4)                    // 테두리 없이 그림자만
-                            )
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
-
+                            
                             Spacer(minLength: 24)
-
+                            
                         } else {
                             Text("표시할 경매가 없습니다.")
                                 .padding(.top, 40)
@@ -436,6 +444,11 @@ struct AutionItem_Detail1_View: View {
             return dummyBidRanks
         }
         return bidRanks
+    }
+    
+    // 금액 내림차순 정렬 (낙찰 금액 높은 순)
+    private var sortedRanksToShow: [BidRank] {
+        ranksToShow.sorted { $0.amount > $1.amount }
     }
     
     // MARK: - 서버 호출
