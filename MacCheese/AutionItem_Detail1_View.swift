@@ -265,21 +265,39 @@ struct AutionItem_Detail1_View: View {
                                 .padding(.top, 8)
                                 .frame(maxWidth: .infinity, alignment: .center)
                             } else {
-                                NavigationLink(destination: BidApply_View()) {
-                                    Text("입찰신청")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .frame(width: 150)
-                                        .padding()
-                                        .background(Color.white)
-                                        .foregroundColor(accent)
-                                        .cornerRadius(10)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .stroke(accent, lineWidth: 1)
+                                HStack(spacing: 12) {
+                                    NavigationLink(destination: BidApply_View()) {
+                                        Text("입찰신청")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Color.white)
+                                            .foregroundColor(accent)
+                                            .cornerRadius(10)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .stroke(accent, lineWidth: 1)
+                                            )
+                                    }
+                                    
+                                    NavigationLink(
+                                        destination: AuctionItem_Overview_View(
+                                            auctionId: auctionId,
+                                            initialTitle: initialTitle
                                         )
+                                        .environmentObject(globalTimer)
+                                    ) {
+                                        Text("상세보기")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(accent)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(10)
+                                    }
                                 }
+                                .padding(.horizontal, 16)
                                 .padding(.top, 8)
-                                .frame(maxWidth: .infinity, alignment: .center)
                             }
                             
                             // 입찰 순위
