@@ -100,12 +100,13 @@ struct AuctionItem_Overview_View: View {
             } else {
                 TabView(selection: $currentPhotoIndex) {
                     ForEach(0..<photos.count, id: \.self) { index in
-                        if let urlStr = photos[safe: index],
-                           let url = URL(string: urlStr) {
+                        if let url = imageURL(from: photos[safe: index]) {
                             AsyncImage(url: url) { phase in
                                 switch phase {
                                 case .empty:
-                                    ProgressView()
+                                    Rectangle()
+                                        .fill(Color(.systemGray5))
+                                        .overlay(ProgressView())
                                 case .success(let image):
                                     image
                                         .resizable()
@@ -114,8 +115,13 @@ struct AuctionItem_Overview_View: View {
                                     Rectangle()
                                         .fill(Color(.systemGray5))
                                         .overlay(
-                                            Image(systemName: "photo")
-                                                .foregroundColor(.gray)
+                                            VStack(spacing: 8) {
+                                                Image(systemName: "photo")
+                                                    .foregroundColor(.gray)
+                                                Text("이미지 로드 실패")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
                                         )
                                 @unknown default:
                                     EmptyView()
@@ -124,6 +130,16 @@ struct AuctionItem_Overview_View: View {
                             .frame(height: 400)
                             .clipped()
                             .tag(index)
+                        } else {
+                            Rectangle()
+                                .fill(Color(.systemGray5))
+                                .overlay(
+                                    Text("이미지 URL 오류")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                )
+                                .frame(height: 400)
+                                .tag(index)
                         }
                     }
                 }
@@ -147,6 +163,19 @@ struct AuctionItem_Overview_View: View {
                 .padding(.top, 16)
                 .padding(.bottom, 20)
             }
+        }
+    }
+    
+    private func imageURL(from urlString: String?) -> URL? {
+        guard let urlString = urlString, !urlString.isEmpty else {
+            return nil
+        }
+        
+        if urlString.hasPrefix("http://") || urlString.hasPrefix("https://") {
+            return URL(string: urlString)
+        } else {
+            let fullURL = "\(API.baseURL)/\(urlString.hasPrefix("/") ? String(urlString.dropFirst()) : urlString)"
+            return URL(string: fullURL)
         }
     }
     
