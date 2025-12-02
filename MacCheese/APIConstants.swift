@@ -5,15 +5,16 @@
 //
 
 enum API {
-//  static let baseURL = "http://124.56.5.77/maccheese"
+  static let baseURL = "http://124.56.5.77/maccheese"
 //  static let baseURL = "http://localhost:8000/maccheese"
-    static let baseURL = "https://lambeen.du.r.appspot.com/"
+//    static let baseURL = "https://lambeen.du.r.appspot.com/"
  
     
     static let login       = "\(baseURL)/LoginV.php"
     static let signup      = "\(baseURL)/Signup_V.php"
     
     static let lostItemList    = "\(baseURL)/LostItemList_V.php"
+    static let lostPhotos = "\(baseURL)/LostPhotos.php"
     static let lostComment     = "\(baseURL)/LostComment_V.php"
     static let foundPlaceList  = "\(baseURL)/FoundPlace_List_V.php"
     static let itemCategoryList = "\(baseURL)/ItemCategory_List_V.php"

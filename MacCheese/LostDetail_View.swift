@@ -2,9 +2,11 @@ import SwiftUI
 
 struct  LostDetail_View: View {
     @State private var isBelled = false
-    let photos: [String] = []
     let item: LostItemDTO
     let userPkey: Int
+    
+    @State private var photos: [String] = []
+    @State private var currentPhotoIndex: Int = 0
     
     private var statusText: String {
         switch item.status {
@@ -34,25 +36,59 @@ struct  LostDetail_View: View {
                 }
             }
             
-            ZStack{
-                HStack{
+            ZStack {
+                HStack {
                     Spacer()
-                    HStack{
+
+                    if let urlStr = currentPhotoURL,
+                       let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                Rectangle()
+                                    .fill(Color(.systemGray5))
+                                    .overlay(ProgressView())
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            case .failure(_):
+                                Rectangle()
+                                    .fill(Color(.systemGray5))
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .foregroundColor(.gray)
+                                    )
+                            @unknown default:
+                                Rectangle()
+                                    .fill(Color(.systemGray5))
+                            }
+                        }
+                        .frame(width: 200, height: 200)
+                        .clipped()
+                        .cornerRadius(8)
+                        .overlay(alignment: .topLeading) {
+                            Button {
+                                toggleBell()
+                            } label: {
+                                Image(systemName: isBelled ? "bell.fill" : "bell")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.yellow)
+                                    .padding(8)
+                            }
+                        }
+                    } else {
+                        // URL 없을 때
                         Rectangle()
                             .fill(Color(.systemGray5))
                             .frame(width: 200, height: 200)
                             .cornerRadius(8)
-                          
                             .overlay(
                                 ZStack(alignment: .topLeading) {
-                                  
                                     Image(systemName: "photo")
                                         .foregroundColor(.gray)
                                         .frame(maxWidth: .infinity,
                                                maxHeight: .infinity)
-                                        .contentShape(Rectangle())
-                                    
-                                    
                                     Button {
                                         toggleBell()
                                     } label: {
@@ -60,27 +96,32 @@ struct  LostDetail_View: View {
                                             .font(.system(size: 20))
                                             .foregroundColor(.yellow)
                                             .padding(8)
-                                            .offset(x: -35, y: -4)
                                     }
                                 }
                             )
                     }
+
                     Spacer()
                 }
-                
-                HStack{
+
+                //2장 이상일 때만 보이기
+                HStack {
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 20))
                         .foregroundColor(accent)
                         .padding(.trailing, 16)
                         .opacity(photos.count > 1 ? 1 : 0)
-                        //이미지 2장 이상일 때만 보이는데 자리는 고정
+                        .onTapGesture {
+                            guard photos.count > 1 else { return }
+                            currentPhotoIndex = (currentPhotoIndex + 1) % photos.count
+                        }
                 }
             }
             .frame(height: 200)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
+
         
             Divider()
             
@@ -113,7 +154,56 @@ struct  LostDetail_View: View {
             showSearch: false,
             hideBackButton: false
         )
+        .onAppear {
+            loadPhotos()
+        }
     }
+    
+    private var currentPhotoURL: String? {
+           if !photos.isEmpty {
+               if photos.indices.contains(currentPhotoIndex) {
+                   return photos[currentPhotoIndex]
+               } else {
+                   return photos.first
+               }
+           }
+           // 아직 상세 사진을 못 받아왔으면, 리스트에서 넘어온 대표사진이라도 사용
+           return item.photoURL
+       }
+    
+    private func loadPhotos() {
+        guard var components = URLComponents(string: API.lostPhotos) else { return }
+        components.queryItems = [
+            URLQueryItem(name: "item_pkey", value: String(item.id))
+        ]
+        guard let url = components.url else { return }
+
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                print("❌ 사진 API 네트워크 오류:", error.localizedDescription)
+                return
+            }
+            guard let data = data else {
+                print("사진 API 응답 없음")
+                return
+            }
+
+            if let raw = String(data: data, encoding: .utf8) {
+                print("LostPhotos.php 응답:", raw)
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode([String].self, from: data)
+                DispatchQueue.main.async {
+                    self.photos = decoded
+                    self.currentPhotoIndex = 0
+                }
+            } catch {
+                print("사진 배열 JSON 디코딩 오류:", error)
+            }
+        }.resume()
+    }
+
     
     private func toggleBell() {
         isBelled.toggle()
@@ -121,7 +211,7 @@ struct  LostDetail_View: View {
             // 벨을 켰을 때만 키워드 등록
             addKeyword(word: item.title, userId: userPkey)
         } else {
-            // 해제 로직도 나중에 추가
+            // 해제 로직(시간남으면
         }
     }
     
