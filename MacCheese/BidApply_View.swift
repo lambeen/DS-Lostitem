@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct BidApply_View: View {
+    
+    let initialTitle: String 
 
     @Environment(\.dismiss) private var dismiss
 

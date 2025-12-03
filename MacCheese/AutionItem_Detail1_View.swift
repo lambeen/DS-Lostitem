@@ -92,6 +92,8 @@ struct AutionItem_Detail1_View: View {
     // 입찰 순위
     @State private var bidRanks: [BidRank] = []
     
+    @State private var auctions: [AuctionItemDTO] = []
+    
     // 이미지 인덱스 (현재 몇 번째 사진인지)
     @State private var currentPhotoIndex: Int = 0
     
@@ -265,7 +267,9 @@ struct AutionItem_Detail1_View: View {
                                 .frame(maxWidth: .infinity, alignment: .center)
                             } else {
                                 HStack(spacing: 12) {
-                                    NavigationLink(destination: BidApply_View()) {
+                                    NavigationLink{
+                                        BidApply_View()
+                                        } {
                                         Text("입찰신청")
                                             .font(.system(size: 16, weight: .semibold))
                                             .frame(maxWidth: .infinity)
@@ -333,16 +337,18 @@ struct AutionItem_Detail1_View: View {
                                             .background(
                                                 RoundedRectangle(cornerRadius: 12)
                                                     .fill(Color.white)
+                                                    .shadow(color: .black.opacity(0.15), radius:4, x: 0, y: 2)
                                             )
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 12)
                                                     .stroke(.white, lineWidth: 0.1)
+                                                    
                                             )
                                             
                                         }
                                     }
                                     .animation(.easeInOut, value: sortedRanksToShow)
-                                    .shadow(radius: 1, y: 1)
+                                    
                                 }
                             }
                             .padding(.horizontal, 16)
