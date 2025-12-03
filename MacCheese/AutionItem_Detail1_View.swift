@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Combine
 
 // MARK: - 입찰 순위 DTO
 
@@ -82,27 +83,19 @@ struct AuctionItemDetailDTO: Decodable {
 
 struct AutionItem_Detail1_View: View {
     @EnvironmentObject var globalTimer: GlobalTimer
+    @AppStorage("studentId") private var storedStudentId: String = ""
     
-    let auctionId: Int           // 어떤 경매인지 (리스트에서 전달)
-    let initialTitle: String     // 리스트에서 보이던 제목
+    let auctionId: Int
+    let initialTitle: String
     
     @State private var item: AuctionItemDetailDTO?
-    @State private var isLoading: Bool = false
-    
-    // 입찰 순위
+    @State private var isLoading = false
     @State private var bidRanks: [BidRank] = []
-    
     @State private var auctions: [AuctionItemDTO] = []
+    @State private var currentPhotoIndex = 0
     
-    // 이미지 인덱스 (현재 몇 번째 사진인지)
-    @State private var currentPhotoIndex: Int = 0
-    
-    // 입찰 순위 재조회용 타이머
-    private let rankTimer = Timer.publish(
-        every: 1,
-        on: .main,
-        in: .common
-    ).autoconnect()
+    @State private var shouldNavigateToEnded = false
+    @State private var rankTimer: AnyCancellable?
     
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -123,7 +116,6 @@ struct AutionItem_Detail1_View: View {
         return max(0, diff)
     }
     
-    // 더미 입찰 데이터
     private let dummyBidRanks: [BidRank] = [
         BidRank(rank: 1, studentId: "20231234", amount: 8000),
         BidRank(rank: 2, studentId: "20234567", amount: 7500),
@@ -177,9 +169,9 @@ struct AutionItem_Detail1_View: View {
                                         isEnded: isActuallyEnded(item: item)
                                     )
                                 )
-                                .font(.headline)
-                                .foregroundColor(accent)
-                                .id(globalTimer.currentTime)
+                                    .font(.headline)
+                                    .foregroundColor(accent)
+                                    .id(globalTimer.currentTime)
                             }
                             .padding(.top, 16)
                             .padding(.horizontal, 16)
@@ -267,21 +259,25 @@ struct AutionItem_Detail1_View: View {
                                 .frame(maxWidth: .infinity, alignment: .center)
                             } else {
                                 HStack(spacing: 12) {
-                                    NavigationLink{
-                                        BidApply_View()
-                                        } {
-                                        Text("입찰신청")
-                                            .font(.system(size: 16, weight: .semibold))
+                                    NavigationLink(
+                                        destination: BidApply_View(
+                                            auctionId: auctionId,
+                                            initialTitle: initialTitle
+                                        )
+                                        .environmentObject(globalTimer)
+                                    ) {
+                                    Text("입찰신청")
+                                        .font(.system(size: 16, weight: .semibold))
                                             .frame(maxWidth: .infinity)
-                                            .padding()
-                                            .background(Color.white)
-                                            .foregroundColor(accent)
-                                            .cornerRadius(10)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 10)
-                                                    .stroke(accent, lineWidth: 1)
-                                            )
-                                    }
+                                        .padding()
+                                        .background(Color.white)
+                                        .foregroundColor(accent)
+                                        .cornerRadius(10)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(accent, lineWidth: 1)
+                                        )
+                                }
                                     
                                     NavigationLink(
                                         destination: AuctionItem_Overview_View(
@@ -373,10 +369,29 @@ struct AutionItem_Detail1_View: View {
         )
         .onAppear {
             loadAuctionItem()
+            AuctionMonitor.shared.startMonitoring(auctionId: auctionId)
+            startRankTimer()
         }
-        .onReceive(rankTimer) { _ in
-            loadBids()
+        .onDisappear {
+            AuctionMonitor.shared.stopMonitoring(auctionId: auctionId)
+            stopRankTimer()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AuctionEndedForWinner"))) { notification in
+            if let auctionId = notification.userInfo?["auctionId"] as? Int,
+               auctionId == self.auctionId {
+                shouldNavigateToEnded = true
+            }
+        }
+        .background(
+            NavigationLink(
+                destination: AuctionEnded_View(auctionId: auctionId)
+                    .environmentObject(globalTimer),
+                isActive: $shouldNavigateToEnded
+            ) {
+                EmptyView()
+            }
+            .hidden()
+        )
     }
     
     // MARK: - 현재 사진 URL 계산
@@ -413,8 +428,6 @@ struct AutionItem_Detail1_View: View {
         }
     }
     
-    // MARK: - Helper: 종료 화면용 데이터
-    
     private func endedItemName(for item: AuctionItemDetailDTO) -> String {
         if item.itemName.isEmpty {
             return initialTitle
@@ -430,36 +443,18 @@ struct AutionItem_Detail1_View: View {
     }
     
     private func topBidRank() -> BidRank? {
-        if bidRanks.isEmpty {
-            return nil
-        }
-        
-        let sorted = bidRanks.sorted { lhs, rhs in
-            lhs.rank < rhs.rank
-        }
-        
-        if sorted.isEmpty {
-            return nil
-        }
-        return sorted[0]
+        guard !bidRanks.isEmpty else { return nil }
+        return bidRanks.sorted { $0.rank < $1.rank }.first
     }
     
-    // 입찰 순위에 보여줄 배열 (더미 포함)
     private var ranksToShow: [BidRank] {
-        if bidRanks.isEmpty {
-            return dummyBidRanks
-        }
-        return bidRanks
+        bidRanks.isEmpty ? dummyBidRanks : bidRanks
     }
     
-    // 금액 내림차순 정렬 (낙찰 금액 높은 순)
     private var sortedRanksToShow: [BidRank] {
         ranksToShow.sorted { $0.amount > $1.amount }
     }
     
-    // MARK: - 서버 호출
-    
-    /// 처음 진입 시: 상세 전체 1번 호출
     private func loadAuctionItem() {
         guard let url = URL(string: "\(API.auctionItemDetail)?auction_id=\(auctionId)") else {
             return
@@ -469,61 +464,56 @@ struct AutionItem_Detail1_View: View {
             isLoading = true
         }
         
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            DispatchQueue.main.async {
             if error != nil {
-                DispatchQueue.main.async {
                     self.isLoading = false
-                }
-                return
+                    return
             }
             
             guard let data = data else {
-                DispatchQueue.main.async {
                     self.isLoading = false
-                }
-                return
+                    return
             }
             
-            do {
-                let decoded = try JSONDecoder().decode(AuctionItemDetailDTO.self, from: data)
-                DispatchQueue.main.async {
+                if let decoded = try? JSONDecoder().decode(AuctionItemDetailDTO.self, from: data) {
                     self.item = decoded
-                    
                     withAnimation {
                         self.bidRanks = decoded.bids
                     }
-                    
                     self.currentPhotoIndex = 0
-                    self.isLoading = false
                 }
-            } catch {
-                DispatchQueue.main.async {
                     self.isLoading = false
-                }
             }
         }.resume()
     }
     
-    /// 입찰 순위만 별도 API로 1초마다 재조회
+    private func startRankTimer() {
+        stopRankTimer()
+        rankTimer = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { [self] _ in
+                loadBids()
+            }
+    }
+    
+    private func stopRankTimer() {
+        rankTimer?.cancel()
+        rankTimer = nil
+    }
+    
     private func loadBids() {
-        guard let url = URL(string: "\(API.auctionBids)?auction_id=\(auctionId)") else {
-            return
-        }
+        guard let url = URL(string: "\(API.auctionBids)?auction_id=\(auctionId)") else { return }
         
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if error != nil {
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data = data,
+                  let decoded = try? JSONDecoder().decode(AuctionBidsResponseDTO.self, from: data) else {
                 return
             }
             
-            guard let data = data else {
-                return
-            }
-            
-            if let decoded = try? JSONDecoder().decode(AuctionBidsResponseDTO.self, from: data) {
-                DispatchQueue.main.async {
-                    withAnimation {
-                        self.bidRanks = decoded.bids
-                    }
+            DispatchQueue.main.async {
+                withAnimation {
+                    self.bidRanks = decoded.bids
                 }
             }
         }.resume()
@@ -572,6 +562,7 @@ struct AutionItem_Detail1_View: View {
         }
         return false
     }
+    
 }
 
 #Preview {

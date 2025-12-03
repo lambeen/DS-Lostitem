@@ -75,6 +75,7 @@ struct AuctionListResponseDTO: Decodable {
 
 struct AuctionList_View: View {
     @EnvironmentObject var globalTimer: GlobalTimer
+    @AppStorage("studentId") private var storedStudentId: String = ""
     
     @State private var statusList: [AuctionStatusDTO] = []
     @State private var selectedStatusCode: Int = -1
@@ -83,6 +84,20 @@ struct AuctionList_View: View {
     
     @State private var currentPage = 1
     private let pageSize = 4
+    
+    @State private var navigationTarget: NavigationTarget?
+    
+    private let accent = Color(red: 0.78, green: 0.10, blue: 0.36)
+    
+    enum NavigationTarget: Identifiable {
+        case ended(auctionId: Int)
+        
+        var id: String {
+            switch self {
+            case .ended(let id): return "ended-\(id)"
+            }
+        }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -125,7 +140,6 @@ struct AuctionList_View: View {
                 Divider()
             }
             
-            // 리스트 (현재 페이지의 경매만)
             List(pagedAuctions) { auction in
                 NavigationLink {
                     AutionItem_Detail1_View(
@@ -174,18 +188,37 @@ struct AuctionList_View: View {
             hideBackButton: true
         )
         .onAppear(perform: loadAuctions)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AuctionEndedForWinner"))) { noti in
+            if let id = noti.userInfo?["auctionId"] as? Int {
+                navigationTarget = .ended(auctionId: id)
+            }
+        }
+        .background(
+            Group {
+                if case .ended(let id) = navigationTarget {
+                    NavigationLink(
+                        destination: AuctionEnded_View(auctionId: id)
+                            .environmentObject(globalTimer),
+                        isActive: Binding(
+                            get: { navigationTarget != nil },
+                            set: { if !$0 { navigationTarget = nil } }
+                        )
+                    ) {
+                        EmptyView()
+                    }
+                    .hidden()
+                }
+            }
+        )
     }
     
-    // 그냥 전체목록 보여주기
     private var filteredAuctions: [AuctionItemDTO] {
         if selectedStatusCode == -1 {
             return auctions
-        } else {
-            return auctions.filter { $0.statusCode == selectedStatusCode }
         }
+        return auctions.filter { $0.statusCode == selectedStatusCode }
     }
 
-    // 정렬순서 경매중 -> 예정 -> 완료 -> 취소 순으로 정렬하기
     private var sortedFilteredAuctions: [AuctionItemDTO] {
         let list = filteredAuctions
         
@@ -201,15 +234,13 @@ struct AuctionList_View: View {
             return list.sorted { lhs, rhs in
                 let lw = order[lhs.statusCode] ?? 99
                 let rw = order[rhs.statusCode] ?? 99
-                if lw != rw { return lw < rw } // 같은 상태면 최근 경매 먼저
+                if lw != rw { return lw < rw }
                 return lhs.id > rhs.id
             }
-        } else {
-            return list
         }
+        return list
     }
     
-    // 현재 페이지 목록
     private var pagedAuctions: [AuctionItemDTO] {
         let totalList = sortedFilteredAuctions
         let total = totalList.count
@@ -222,14 +253,12 @@ struct AuctionList_View: View {
         return Array(totalList[start..<end])
     }
 
-    // 전체 페이지 수
     private var totalPages: Int {
         let count = filteredAuctions.count
         if count == 0 { return 1 }
         return Int(ceil(Double(count) / Double(pageSize)))
     }
     
-    // 서버 호출
     private func loadAuctions() {
         guard let url = URL(string: API.auctionList) else {
             return
@@ -246,10 +275,14 @@ struct AuctionList_View: View {
                     self.auctions = decoded.auctions
                     self.currentPage = 1
                     self.selectedStatusCode = -1
+                    
+                    let auctionIds = decoded.auctions.map { $0.id }
+                    AuctionMonitor.shared.startMonitoring(auctionIds: auctionIds)
                 }
             }
         }.resume()
     }
+    
 }
 
 // - 한 줄 셀 UI
@@ -265,9 +298,7 @@ struct AuctionRowView: View {
         return f
     }()
     
-    // 경매 상태 Or 타이머 표시 부분
     private var remainingText: String {
-        // 경매중일 때만 타이머
         guard auction.statusEnum == .ongoing else { return "" }
 
         guard let text = auction.endDate,

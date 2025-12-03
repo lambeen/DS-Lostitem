@@ -2,26 +2,29 @@ import SwiftUI
 
 struct TapBar_View: View {
     @EnvironmentObject var globalTimer: GlobalTimer
+    @StateObject private var auctionMonitor = AuctionMonitor.shared
     
     let userPkey: Int
     
+    @State private var navigationPath = NavigationPath()
+    @State private var shouldShowEnded = false
+    @State private var endedAuctionId = 0
+    
     var body: some View {
         TabView {
-            // 1) 분실물
-            NavigationStack {
+            NavigationStack(path: $navigationPath) {
                 LostItemList_View(userPkey: userPkey)
             }
             .tabItem {
                 VStack(spacing: 2) {
                     Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 20))             // 아이콘 크게
+                        .font(.system(size: 20))
                     Text("분실물")
-                        .font(.system(size: 13, weight: .semibold)) // 글씨 살짝 크게+굵게
+                        .font(.system(size: 13, weight: .semibold))
                 }
             }
 
-            // 2) 경매
-            NavigationStack {
+            NavigationStack(path: $navigationPath) {
                 AuctionList_View()
                     .environmentObject(globalTimer)
             }
@@ -34,8 +37,7 @@ struct TapBar_View: View {
                 }
             }
 
-            // 3) 알림
-            NavigationStack {
+            NavigationStack(path: $navigationPath) {
                 Notification_View()
             }
             .tabItem {
@@ -47,8 +49,7 @@ struct TapBar_View: View {
                 }
             }
 
-            // 4) 설정
-            NavigationStack {
+            NavigationStack(path: $navigationPath) {
                 Settings_View()
             }
             .tabItem {
@@ -61,11 +62,21 @@ struct TapBar_View: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        // 선택된 탭 색 (네가 쓰는 accent 전역 상수)
         .accentColor(accent)
-        // 탭바 배경 흰색 고정하고 싶으면
         .toolbarBackground(.white, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AuctionEndedForWinner"))) { noti in
+            if let id = noti.userInfo?["auctionId"] as? Int {
+                endedAuctionId = id
+                shouldShowEnded = true
+            }
+        }
+        .sheet(isPresented: $shouldShowEnded) {
+            NavigationStack {
+                AuctionEnded_View(auctionId: endedAuctionId)
+                    .environmentObject(globalTimer)
+            }
+        }
     }
 }
 
