@@ -13,7 +13,7 @@ struct MacCheeseApp: App {
     
     var body: some Scene {
         WindowGroup {
-            Login_View()
+            Login_View(userPkey: 1)
                 .environmentObject(globalTimer)
         }
     }

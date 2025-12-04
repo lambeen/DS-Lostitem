@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct Login_View: View {
+    let userPkey: Int
     @EnvironmentObject var globalTimer: GlobalTimer
     
     @State private var studentId: String = ""       // 학번
@@ -81,7 +82,7 @@ struct Login_View: View {
 
                     // 로그인 이동용
                     NavigationLink(
-                        destination: TapBar_View(userPkey: 1)
+                        destination: TapBar_View(userPkey: userPkey)
                             .environmentObject(globalTimer),
                         isActive: $succeedLogin
                     ) {
@@ -244,5 +245,5 @@ struct Login_View: View {
 }
 
 #Preview {
-    Login_View()
+    Login_View(userPkey: 1  )
 }

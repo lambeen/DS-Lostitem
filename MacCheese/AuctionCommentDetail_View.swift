@@ -38,8 +38,6 @@ struct AuctionCommentDetail_View: View {
     
     @Environment(\.dismiss) private var dismiss
     
-    // 공통 포인트 컬러
-    private let accent = Color(red: 0.78, green: 0.10, blue: 0.36)
     
     // 서버에서 받아온 전체 댓글(루트 + 대댓글)
     @State private var comments: [AuctionCommentDTO] = []
