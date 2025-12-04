@@ -452,7 +452,20 @@ struct AutionItem_Detail1_View: View {
     }
     
     private var sortedRanksToShow: [BidRank] {
-        ranksToShow.sorted { $0.amount > $1.amount }
+        let all = ranksToShow.sorted { $0.amount > $1.amount }
+        var seen = Set<String>()
+        var unique: [BidRank] = []
+        
+        for bid in all {
+            if !seen.contains(bid.studentId) {
+                seen.insert(bid.studentId)
+                unique.append(bid)
+            }
+        }
+        
+        return unique.enumerated().map { index, bid in
+            BidRank(rank: index + 1, studentId: bid.studentId, amount: bid.amount)
+        }
     }
     
     private func loadAuctionItem() {
@@ -503,11 +516,11 @@ struct AutionItem_Detail1_View: View {
     }
     
     private func loadBids() {
-        guard let url = URL(string: "\(API.auctionBids)?auction_id=\(auctionId)") else { return }
+        guard let url = URL(string: "\(API.bidRank)?auction_id=\(auctionId)") else { return }
         
         URLSession.shared.dataTask(with: url) { data, _, _ in
             guard let data = data,
-                  let decoded = try? JSONDecoder().decode(AuctionBidsResponseDTO.self, from: data) else {
+                  let decoded = try? JSONDecoder().decode(BidRankResponseDTO.self, from: data) else {
                 return
             }
             

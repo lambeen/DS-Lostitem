@@ -7,6 +7,34 @@
 
 import SwiftUI
 
+struct BidApplyResponseDTO: Decodable {
+    let success: Bool
+    let message: String
+    let auction_id: Int?
+    let your_bid: Int?
+    let min_price: Int?
+    let previous_max_bid: Int?
+    let highest_bid: Int?
+    let highest_user_pkey: Int?
+    let highest_student_id: String?
+    let is_user_highest: Int?
+    let current_max: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case success, message
+        case auction_id, your_bid, min_price, previous_max_bid
+        case highest_bid, highest_user_pkey, highest_student_id
+        case is_user_highest, current_max
+    }
+}
+
+struct BidRankResponseDTO: Decodable {
+    let auction_id: Int
+    let min_price: Int
+    let highest_bid: Int
+    let bids: [BidRank]
+}
+
 struct BidApply_View: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var globalTimer: GlobalTimer
@@ -34,7 +62,12 @@ struct BidApply_View: View {
         return f
     }()
     
+    @State private var highestBid: Int = 0
+    
     private var topBidAmount: Int {
+        if highestBid > 0 {
+            return highestBid
+        }
         guard let item = item else { return 0 }
         if item.bids.isEmpty {
             return item.minPrice
@@ -88,6 +121,10 @@ struct BidApply_View: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    Color.clear.frame(height: 0)
+                        .onTapGesture {
+                            hideKeyboard()
+                        }
                 
                     
                     if let item = item, !item.photos.isEmpty {
@@ -181,7 +218,9 @@ struct BidApply_View: View {
                         }
                         TextField("입찰 금액을 입력하세요", text: $bidAmount)
                             .keyboardType(.numberPad)
-                            .padding(8)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding(12)
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(16)
                     }
@@ -238,6 +277,7 @@ struct BidApply_View: View {
         )
         .task {
             loadAuctionItem()
+            loadBidRank()
         }
         .onDisappear {
             stopAutoSlide()
@@ -302,17 +342,34 @@ struct BidApply_View: View {
                     return
                 }
                 
-                guard let data = data, let str = String(data: data, encoding: .utf8) else {
-                    self.alertMessage = "서버 응답을 처리할 수 없습니다."
+                guard let data = data else {
+                    self.alertMessage = "서버 응답이 없습니다."
                     self.showAlert = true
                     return
                 }
                 
-                let trimmed = str.trimmingCharacters(in: .whitespacesAndNewlines)
-                if trimmed.lowercased().contains("success") || trimmed.lowercased().contains("성공") || trimmed == "1" {
-                    self.alertMessage = "입찰 신청이 완료되었습니다."
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let success = json["success"] as? Bool,
+                       let message = json["message"] as? String {
+                        if success {
+                            if let isHighest = json["is_user_highest"] as? Int, isHighest == 1 {
+                                self.alertMessage = "\(message)\n현재 최고 입찰가입니다!"
+                            } else {
+                                self.alertMessage = message
+                            }
+                            self.loadBidRank()
+                        } else {
+                            self.alertMessage = message
+                        }
+                    } else if let message = json["message"] as? String {
+                        self.alertMessage = message
+                    } else {
+                        self.alertMessage = "서버 응답을 처리할 수 없습니다."
+                    }
+                } else if let str = String(data: data, encoding: .utf8) {
+                    self.alertMessage = str.isEmpty ? "서버 응답을 처리할 수 없습니다." : str
                 } else {
-                    self.alertMessage = trimmed.isEmpty ? "입찰 신청에 실패했습니다." : trimmed
+                    self.alertMessage = "서버 응답을 처리할 수 없습니다."
                 }
                 self.showAlert = true
             }
@@ -335,6 +392,20 @@ struct BidApply_View: View {
         }.resume()
     }
     
+    private func loadBidRank() {
+        guard let url = URL(string: "\(API.bidRank)?auction_id=\(auctionId)") else { return }
+        
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            DispatchQueue.main.async {
+                guard error == nil, let data = data else { return }
+                
+                if let decoded = try? JSONDecoder().decode(BidRankResponseDTO.self, from: data) {
+                    self.highestBid = decoded.highest_bid
+                }
+            }
+        }.resume()
+    }
+    
     private func startAutoSlide(total: Int) {
         guard total > 1 else { return }
         stopAutoSlide()
@@ -348,6 +419,10 @@ struct BidApply_View: View {
     private func stopAutoSlide() {
         autoSlideTimer?.invalidate()
         autoSlideTimer = nil
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

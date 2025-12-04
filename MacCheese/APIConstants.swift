@@ -25,6 +25,7 @@ enum API {
     static let auctionBids         = "\(baseURL)/auction_bids.php"
     static let auctionComment      = "\(baseURL)/AuctionComment_V.php"
     static let bidApply            = "\(baseURL)/bid_apply.php"
+    static let bidRank             = "\(baseURL)/bid_rank.php"
     
     static let noticeList   = "\(baseURL)/notice.php"
     static let noticeDetail = "\(baseURL)/notice_detail.php"
