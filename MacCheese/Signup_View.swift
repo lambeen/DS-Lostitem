@@ -87,7 +87,7 @@ struct Signup_View: View {
             }
 
             // 로그인 이동
-            NavigationLink(destination: Login_View()) {
+            NavigationLink(destination: Login_View(userPkey: 1)) {
                 VStack(spacing: 2) {
                     Text("로그인하시겠습니까?")
                         .foregroundColor(.secondary)

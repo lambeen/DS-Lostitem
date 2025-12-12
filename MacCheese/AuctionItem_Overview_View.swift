@@ -240,7 +240,7 @@ struct AuctionItem_Overview_View: View {
                         statusText: o.statusText,
                         endDate: o.endDate ?? "",
                         itemPkey: o.auctionId,
-                        loginUserPkey:
+                        loginUserPkey: 1
                     )
                 } label: {
                     Text("댓글 확인하기")

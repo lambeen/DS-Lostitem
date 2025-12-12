@@ -53,7 +53,7 @@ struct Settings_View: View {
                 }
             }
             .fullScreenCover(isPresented: $showLogin) {
-                Login_View()
+                Login_View(userPkey: 1)
             }
         }
         .duksungHeaderNav(

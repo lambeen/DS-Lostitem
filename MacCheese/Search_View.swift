@@ -5,10 +5,9 @@
 //  Created by mac10 on 11/03/25.
 //
 
-
 import SwiftUI
 
-// 카테고리 구조체
+// 카테고리
 struct ItemCategoryDTO: Identifiable, Decodable {
     let pkey: Int
     let name: String
@@ -16,7 +15,7 @@ struct ItemCategoryDTO: Identifiable, Decodable {
     var id: Int { pkey }
 }
 
-// 장소 구조체
+// 습득 장소
 struct FoundPlaceDTO: Identifiable, Decodable {
     let pkey: Int
     let placename: String
@@ -26,6 +25,9 @@ struct FoundPlaceDTO: Identifiable, Decodable {
 
 struct Search_View: View {
     @Environment(\.dismiss) private var dismiss
+    
+    // 로그인 사용자 키(로그인 뷰에서 저장해둔 값 사용)
+    @AppStorage("userPkey") private var storedUserPkey: Int = 0
     
     @State private var categories: [ItemCategoryDTO] = []
     @State private var places: [FoundPlaceDTO] = []
@@ -41,8 +43,6 @@ struct Search_View: View {
     var body: some View {
         VStack(spacing: 30) {
             
-            
-            // 입력 영역
             ScrollView {
                 VStack(alignment: .leading, spacing: 48) {
                     
@@ -80,9 +80,10 @@ struct Search_View: View {
                 .padding(.top, 16)
             }
             
-            // 하단 버튼
             HStack(spacing: 12) {
-                Button(action: { goResult = true }) {
+                Button(action: {
+                    goResult = true
+                }) {
                     Text("확인")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -113,14 +114,13 @@ struct Search_View: View {
             loadPlaces()
         }
         .background(
-            
             NavigationLink(
                 destination: SearchResult_View(
                     selectedCategoryPkey: categories.first(where: { $0.name == category })?.pkey,
                     selectedPlacePkey: places.first(where: { $0.placename == place })?.pkey,
                     selectedDate: nil,
                     keyword: keyword.isEmpty ? nil : keyword,
-                    userPkey: 1
+                    userPkey: storedUserPkey
                 )
                 .duksungHeaderNav(
                     title: "검색 결과",
@@ -128,7 +128,6 @@ struct Search_View: View {
                     hideBackButton: false
                 ),
                 isActive: $goResult
-                
             ) {
                 EmptyView()
             }
@@ -136,7 +135,6 @@ struct Search_View: View {
         )
     }
     
-    // 카테고리 불러오기
     private func loadCategories() {
         guard let url = URL(string: API.itemCategoryList) else { return }
         
@@ -151,9 +149,8 @@ struct Search_View: View {
         }.resume()
     }
     
-    // 장소 불러오기
     private func loadPlaces() {
-        guard let url = URL(string:API.foundPlaceList) else { return }
+        guard let url = URL(string: API.foundPlaceList) else { return }
         
         URLSession.shared.dataTask(with: url) { data, _, _ in
             guard let data = data else { return }
