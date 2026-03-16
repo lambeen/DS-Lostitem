@@ -67,12 +67,9 @@
 
 ## 📱 실행 화면
 
-![실행화면1](DS-Lostitem
-/assets/7.png)
-![실행화면2](DS-Lostitem
-/assets/8.png)
-![실행화면3](DS-Lostitem
-/assets/9.png)
+![ㄱ](assets/7.png)
+![ㄴ](assets/8.png)
+![ㄷ](assets/9.png)
 
 <br>
 
